@@ -40,6 +40,4 @@ If you see a prompt asking for a mobile number during development or in screensh
 
 Contributions are welcome. Feel free to open issues or pull requests.
 
-## License
 
-MIT License
