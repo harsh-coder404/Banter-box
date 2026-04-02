@@ -6,6 +6,10 @@ import android.graphics.Bitmap
 import android.util.Base64
 import android.util.Log
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.example.whatsapp.data.remote.BackendClient
+import com.example.whatsapp.data.remote.LoginRequest
+import com.example.whatsapp.data.session.ChatSession
 import com.example.whatsapp.model.PhoneAuthUser
 import com.google.firebase.Firebase
 import com.google.firebase.FirebaseException
@@ -18,6 +22,7 @@ import com.google.firebase.database.FirebaseDatabase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 import java.io.ByteArrayOutputStream
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
@@ -166,6 +171,35 @@ class PhoneAuthViewModel @Inject constructor(
 
     }
 
+    fun loginDummyAccount(phoneNumber: String, context: Context) {
+
+        _authState.value = AuthState.Loading
+
+        viewModelScope.launch {
+            runCatching {
+                BackendClient.authApi.login(LoginRequest(phoneNumber = phoneNumber, password = "0000"))
+            }.onSuccess { response ->
+                ChatSession.setSession(
+                    context = context,
+                    userId = response.userId,
+                    phoneNumber = response.phoneNumber,
+                    token = response.token
+                )
+
+                markUserAsSignedIn(context)
+                _authState.value = AuthState.Success(
+                    PhoneAuthUser(
+                        userId = response.userId.toString(),
+                        phoneNumber = response.phoneNumber,
+                        name = response.name
+                    )
+                )
+            }.onFailure { throwable ->
+                _authState.value = AuthState.Error(throwable.message ?: "Dummy login failed")
+            }
+        }
+    }
+
     // takes user,s name , status and image and store it in firebase cloud
     fun savedUserProfile(userId: String, name: String, status: String, profileImage: Bitmap?) {
 
@@ -211,9 +245,10 @@ class PhoneAuthViewModel @Inject constructor(
     fun signOut(activity: Activity){
 
         firebaseAuth.signOut()    // using this we are logging out the user from the firebase
+        ChatSession.clear(activity)
 
         val sharedPreferences = activity.getSharedPreferences("app_prefs", Activity.MODE_PRIVATE)
-        sharedPreferences.edit().putBoolean("isSigned",false).apply()
+        sharedPreferences.edit().putBoolean("isSignedIn",false).apply()
 
     //  setting the flag value false
     }

@@ -22,3 +22,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "WhatsApp"
 include(":app")
+include(":backend")

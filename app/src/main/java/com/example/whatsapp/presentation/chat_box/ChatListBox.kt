@@ -2,6 +2,7 @@ package com.example.whatsapp.presentation.chat_box
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -24,7 +25,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil.compose.rememberImagePainter
+import coil.compose.rememberAsyncImagePainter
 import com.example.whatsapp.R
 import com.example.whatsapp.presentation.viewmodel.BaseViewModel
 
@@ -35,10 +36,16 @@ fun ChatListBox(
     baseViewModel: BaseViewModel
 ) {
 
-    Row(modifier = Modifier.padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
 
         // to store the converted image
-        val profileImage = chatListModel?.profileImage
+        val profileImage = chatListModel.profileImage
 
         val bitmap = remember {
             profileImage?.let { baseViewModel.base64toBitmap(it) }
@@ -47,7 +54,7 @@ fun ChatListBox(
         Image(
             painter = if (bitmap != null) {
 
-                rememberImagePainter(bitmap)
+                rememberAsyncImagePainter(bitmap)
 
             } else {
 

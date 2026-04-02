@@ -1,8 +1,10 @@
 package com.example.whatsapp.presentation.homescreen
 
+import android.app.Activity
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -33,49 +35,40 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.modifier.modifierLocalConsumer
-import androidx.compose.ui.modifier.modifierLocalOf
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.whatsapp.R
 import com.example.whatsapp.presentation.bottomnavigation.BottomNavigation
 import com.example.whatsapp.presentation.chat_box.ChatListBox
 import com.example.whatsapp.presentation.chat_box.ChatListModel
 import com.example.whatsapp.presentation.navigation.Routes
 import com.example.whatsapp.presentation.viewmodel.BaseViewModel
-import com.google.firebase.auth.FirebaseAuth
+import com.example.whatsapp.presentation.viewmodel.PhoneAuthViewModel
 
 @Composable
 fun HomeScreen(
     navHostController: NavHostController,
-    homeBaseViewModel: BaseViewModel
+    homeBaseViewModel: BaseViewModel,
+    phoneAuthViewModel: PhoneAuthViewModel = hiltViewModel()
 ) {
 
-    var showMenu by remember {
-        mutableStateOf(false)
-    }
+    val context = LocalContext.current
+    val activity = context as? Activity
+
 
     var showPopup by remember {
         mutableStateOf(false)
     }
     val chatData by homeBaseViewModel.chatList.collectAsState()
 
-    // to fetch userId
-    val userId = FirebaseAuth.getInstance().currentUser?.uid
-
-    if (userId != null) {
-
-        // LaunchedEffect run only once when the data or state changes rather repetitively
-        LaunchedEffect(userId) {
-
-            homeBaseViewModel.getChatForUser(userId) { chats ->
-
-            }
-        }
+    LaunchedEffect(Unit) {
+        homeBaseViewModel.refreshChats()
     }
 
     Scaffold(
@@ -97,24 +90,47 @@ fun HomeScreen(
             }
         },
         bottomBar = {
-            BottomNavigation(navHostController, selectedItem = 0, onClick = { index ->
+            BottomNavigation(navHostController, onClick = { index ->
 
                 when(index){
 
-                    0 -> {navHostController.navigate(Routes.HomeScreen)}
-                    1-> {navHostController.navigate(Routes.UpdateScreen)}
-                    2-> {navHostController.navigate(Routes.CommunitiesScreen)}
-                    3-> {navHostController.navigate(Routes.CallScreen)}
+                    0 -> {
+                        navHostController.navigate(Routes.HomeScreen) {
+                            popUpTo(navHostController.graph.startDestinationId) { saveState = true }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    }
+                    1-> {
+                        navHostController.navigate(Routes.UpdateScreen) {
+                            popUpTo(navHostController.graph.startDestinationId) { saveState = true }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    }
+                    2-> {
+                        navHostController.navigate(Routes.CommunitiesScreen) {
+                            popUpTo(navHostController.graph.startDestinationId) { saveState = true }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    }
+                    3-> {
+                        navHostController.navigate(Routes.CallScreen) {
+                            popUpTo(navHostController.graph.startDestinationId) { saveState = true }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    }
 
                 }
             })
         }
     ) {
-
         Column(
             modifier = Modifier
+                .fillMaxSize()
                 .padding(it)
-                .background(color = Color.White)
         ) {
 
             Spacer(Modifier.height(8.dp))
@@ -152,7 +168,7 @@ fun HomeScreen(
                 } else {
 
                     Text(
-                        "HelloThere",
+                        "Banterbox",
                         fontSize = 28.sp,
                         color = colorResource(R.color.light_green),
                         modifier = Modifier
@@ -242,6 +258,20 @@ fun HomeScreen(
                                         navHostController.navigate(Routes.SettingScreen)
                                     }
                                 )
+                                DropdownMenuItem(
+                                    text = { Text("Logout") },
+                                    onClick = {
+                                        showMenu = false
+                                        if (activity != null) {
+                                            phoneAuthViewModel.signOut(activity)
+                                        }
+                                        navHostController.navigate(Routes.WelcomeScreen) {
+                                            popUpTo(navHostController.graph.startDestinationId) {
+                                                inclusive = true
+                                            }
+                                        }
+                                    }
+                                )
 
                             }
 
@@ -266,11 +296,15 @@ fun HomeScreen(
                         homeBaseViewModel.addChat(newUser)
                     },
                     baseViewModel = homeBaseViewModel
-                    )
+                )
 
             }
 
-            LazyColumn {
+            LazyColumn(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+            ) {
 
                 items(chatData) { chat ->
 
@@ -289,6 +323,7 @@ fun HomeScreen(
         }
     }
 }
+
 
 @Composable
 fun AddUserPopup(

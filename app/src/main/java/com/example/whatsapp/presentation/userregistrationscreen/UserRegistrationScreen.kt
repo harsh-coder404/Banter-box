@@ -14,17 +14,11 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.LocalTextStyle
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
@@ -38,7 +32,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.pointer.motionEventSpy
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.text.font.FontWeight
@@ -82,6 +75,8 @@ fun UserRegistrationScreen(
         mutableStateOf<String?>(null)
     }
 
+    val dummyPhones = remember { setOf("9890989098", "6262626262", "8787878787") }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -99,7 +94,7 @@ fun UserRegistrationScreen(
         Spacer(modifier = Modifier.height(24.dp))
 
         Row {
-            Text(text = "whatsApp will need to verify your phone number")
+            Text(text = "Banterbox will need to verify your phone number")
             Spacer(modifier = Modifier.width(4.dp))
 
         }
@@ -119,11 +114,11 @@ fun UserRegistrationScreen(
                         color = Color.Black
                     )
 
-                    Icon(
-                        imageVector = Icons.Default.ArrowDropDown,
-                        contentDescription = null,
+                    Text(
+                        text = "v",
                         modifier = Modifier.align(Alignment.CenterEnd),
-                        tint = colorResource(R.color.light_green)
+                        color = colorResource(R.color.light_green),
+                        fontWeight = FontWeight.Bold
                     )
                 }
             }
@@ -198,6 +193,12 @@ fun UserRegistrationScreen(
 
                             if (phoneNumber.isNotEmpty()) {   // to check if user has provided their number or not
 
+                                if (phoneNumber in dummyPhones) {
+                                    verificationId = "DUMMY"
+                                    Toast.makeText(context, "Use OTP 0000", Toast.LENGTH_SHORT).show()
+                                    return@Button
+                                }
+
                                 val fullPhoneNumber = "$countryCode$phoneNumber"
 
                                 phoneAuthViewModel.sendVerificationCode(fullPhoneNumber, activity)
@@ -259,7 +260,9 @@ fun UserRegistrationScreen(
                     Button(
                         onClick = {
 
-                            if (otp.isNotEmpty() && verificationId != null) {   // if otp is entered
+                            if (phoneNumber in dummyPhones && otp == "0000") {
+                                phoneAuthViewModel.loginDummyAccount(phoneNumber, context)
+                            } else if (otp.isNotEmpty() && verificationId != null) {   // if otp is entered
 
                                 phoneAuthViewModel.verifyCode(otp, context)
 
@@ -297,7 +300,7 @@ fun UserRegistrationScreen(
 
                 phoneAuthViewModel.resetAuthState()  // reset if success
 
-                navController.navigate(Routes.UserProfileSetScreen){
+                navController.navigate(Routes.HomeScreen){
 
                     popUpTo<Routes.UserRegistrationScreen>{    // pop Up from navBackStackEntry
                         inclusive = true

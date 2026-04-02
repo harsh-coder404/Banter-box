@@ -42,7 +42,7 @@ fun WelcomeScreen(navHostController: NavHostController) {
             modifier = Modifier.size(300.dp)
         )
 
-        Text(text = "Welcome to WhatsApp", fontSize = 24.sp, fontWeight = FontWeight.Bold)
+        Text(text = "Welcome to Banterbox", fontSize = 24.sp, fontWeight = FontWeight.Bold)
 
         Spacer(modifier = Modifier.height(24.dp))
 

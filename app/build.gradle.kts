@@ -75,6 +75,7 @@ dependencies {
     implementation(platform("com.google.firebase:firebase-bom:33.7.0"))
     implementation("com.google.firebase:firebase-auth-ktx")
     implementation(libs.firebase.database)
+    implementation(libs.material3)
 
     // Testing
     testImplementation(libs.junit)
@@ -93,6 +94,12 @@ dependencies {
 
     // Coil for Jetpack Compose
     implementation("io.coil-kt:coil-compose:2.7.0")
+
+    // Backend integration
+    implementation("com.squareup.retrofit2:retrofit:2.11.0")
+    implementation("com.squareup.retrofit2:converter-gson:2.11.0")
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    implementation("com.google.code.gson:gson:2.11.0")
 
 
 }

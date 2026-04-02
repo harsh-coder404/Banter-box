@@ -180,14 +180,38 @@ fun CallScreen(navHostController: NavHostController) {
         },
 
         bottomBar = {
-            BottomNavigation(navHostController, selectedItem = 0, onClick = { index ->
+            BottomNavigation(navHostController, onClick = { index ->
 
                 when(index){
 
-                    0 -> {navHostController.navigate(Routes.HomeScreen)}
-                    1-> {navHostController.navigate(Routes.UpdateScreen)}
-                    2-> {navHostController.navigate(Routes.CommunitiesScreen)}
-                    3-> {navHostController.navigate(Routes.CallScreen)}
+                    0 -> {
+                        navHostController.navigate(Routes.HomeScreen) {
+                            popUpTo(navHostController.graph.startDestinationId) { saveState = true }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    }
+                    1-> {
+                        navHostController.navigate(Routes.UpdateScreen) {
+                            popUpTo(navHostController.graph.startDestinationId) { saveState = true }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    }
+                    2-> {
+                        navHostController.navigate(Routes.CommunitiesScreen) {
+                            popUpTo(navHostController.graph.startDestinationId) { saveState = true }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    }
+                    3-> {
+                        navHostController.navigate(Routes.CallScreen) {
+                            popUpTo(navHostController.graph.startDestinationId) { saveState = true }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    }
 
                 }
             })

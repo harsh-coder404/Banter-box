@@ -2,9 +2,12 @@ package com.example.whatsapp.presentation.navigation
 
 import androidx.compose.runtime.Composable
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
+import com.example.whatsapp.presentation.chatscreen.ChatScreen
 import com.example.whatsapp.presentation.callscreen.CallScreen
 import com.example.whatsapp.presentation.communityscreen.CommunitiesScreen
 import com.example.whatsapp.presentation.homescreen.HomeScreen
@@ -46,6 +49,13 @@ fun  WhatsAppNavigationSystem(){
         }
         composable<Routes.UserProfileSetScreen> {
             UserProfileSetScreen(navHostController = navController)
+        }
+        composable(
+            route = Routes.ChatScreen.route,
+            arguments = listOf(navArgument("phoneNumber") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val phoneNumber = backStackEntry.arguments?.getString("phoneNumber") ?: ""
+            ChatScreen(phoneNumber = phoneNumber)
         }
     }
 }

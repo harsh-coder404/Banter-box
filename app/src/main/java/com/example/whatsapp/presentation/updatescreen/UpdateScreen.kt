@@ -70,7 +70,7 @@ fun UpdateScreen(navHostController: NavHostController) {
         ),
         Channels(
             image = R.drawable.whatsapp_icon,
-            name = "WhatsApp",
+            name = "Banterbox",
             description = "Latest Updates on the app"
         ),
         Channels(
@@ -101,14 +101,38 @@ fun UpdateScreen(navHostController: NavHostController) {
             }
         },
         bottomBar = {
-            BottomNavigation(navHostController, selectedItem = 0, onClick = { index ->
+            BottomNavigation(navHostController, onClick = { index ->
 
                 when(index){
 
-                    0 -> {navHostController.navigate(Routes.HomeScreen)}
-                    1-> {navHostController.navigate(Routes.UpdateScreen)}
-                    2-> {navHostController.navigate(Routes.CommunitiesScreen)}
-                    3-> {navHostController.navigate(Routes.CallScreen)}
+                    0 -> {
+                        navHostController.navigate(Routes.HomeScreen) {
+                            popUpTo(navHostController.graph.startDestinationId) { saveState = true }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    }
+                    1-> {
+                        navHostController.navigate(Routes.UpdateScreen) {
+                            popUpTo(navHostController.graph.startDestinationId) { saveState = true }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    }
+                    2-> {
+                        navHostController.navigate(Routes.CommunitiesScreen) {
+                            popUpTo(navHostController.graph.startDestinationId) { saveState = true }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    }
+                    3-> {
+                        navHostController.navigate(Routes.CallScreen) {
+                            popUpTo(navHostController.graph.startDestinationId) { saveState = true }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    }
 
                 }
             })

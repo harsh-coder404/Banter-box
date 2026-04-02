@@ -6,14 +6,6 @@
         <entry key="Firebase Crashlytics">
           <value>
             <InsightsFilterSettings>
-              <option name="connection">
-                <ConnectionSetting>
-                  <option name="appId" value="com.example.whatsapp" />
-                  <option name="mobileSdkAppId" value="1:427292117167:android:027a527b4aa4a61f812c5a" />
-                  <option name="projectId" value="hellothere-6f442" />
-                  <option name="projectNumber" value="427292117167" />
-                </ConnectionSetting>
-              </option>
               <option name="signal" value="SIGNAL_UNSPECIFIED" />
               <option name="timeIntervalDays" value="THIRTY_DAYS" />
               <option name="visibilityType" value="ALL" />

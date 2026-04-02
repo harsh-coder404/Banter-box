@@ -11,20 +11,32 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
+import androidx.navigation.compose.currentBackStackEntryAsState
 import com.example.whatsapp.R
 
 @Composable
 fun BottomNavigation(
     navHostController: NavHostController,
-    onClick:(index: Int) -> Unit,
-    selectedItem: Int
+    onClick:(index: Int) -> Unit
 ) {
+
+    val navBackStackEntry by navHostController.currentBackStackEntryAsState()
+    val currentRoute = navBackStackEntry?.destination?.route
+
+    val selectedItem = when {
+        currentRoute?.contains("HomeScreen") == true -> 0
+        currentRoute?.contains("UpdateScreen") == true -> 1
+        currentRoute?.contains("CommunitiesScreen") == true -> 2
+        currentRoute?.contains("CallScreen") == true -> 3
+        else -> 0
+    }
 
     val items = listOf(
         NavigationItem(

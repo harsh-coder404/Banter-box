@@ -12,15 +12,15 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.LineHeightStyle
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
 import com.example.whatsapp.R
+import com.example.whatsapp.data.session.ChatSession
 import com.example.whatsapp.presentation.navigation.Routes
 import kotlinx.coroutines.delay
 
@@ -28,11 +28,21 @@ import kotlinx.coroutines.delay
 @Composable
 fun SplashScreen(navHostController: NavHostController){
 
+    val context = LocalContext.current
+
     LaunchedEffect(Unit) {   // It is used so this code file will be executed only once and for certain time period
 
         delay(3000)   // time in ms for which  this screen will be  visible
 
-        navHostController.navigate(Routes.WelcomeScreen){
+        ChatSession.load(context)
+
+        val destination = if (ChatSession.isLoggedIn()) {
+            Routes.HomeScreen
+        } else {
+            Routes.WelcomeScreen
+        }
+
+        navHostController.navigate(destination){
 
             popUpTo<Routes.SplashScreen>{inclusive = true}   // this pops up the the entry of splashscreen from navBackStack, even if we click back button this screen will not be there
         }

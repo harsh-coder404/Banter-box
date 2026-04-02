@@ -42,7 +42,6 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import coil.compose.rememberAsyncImagePainter
-import coil.compose.rememberImagePainter
 import com.example.whatsapp.R
 import com.example.whatsapp.presentation.navigation.Routes
 import com.example.whatsapp.presentation.viewmodel.PhoneAuthViewModel
@@ -138,7 +137,7 @@ fun UserProfileSetScreen(
             else if (profileImageUri != null) {
 
                 Image(
-                    painter = rememberImagePainter(profileImageUri),  // Coil - to show image that we obtain from any server or URL in app
+                    painter = rememberAsyncImagePainter(profileImageUri),  // Coil - to show image that we obtain from any server or URL in app
                     contentDescription = null,
                     Modifier
                         .fillMaxSize()
