@@ -1,5 +1,9 @@
 package com.example.whatsapp.presentation.chatscreen
 
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.hoverable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -13,11 +17,15 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -28,12 +36,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.whatsapp.data.session.ChatSession
 
@@ -43,6 +52,9 @@ fun ChatScreen(
     chatViewModel: ChatViewModel = viewModel()
 ) {
     var input by remember { mutableStateOf("") }
+    var pendingDeleteMessage by remember { mutableStateOf<UiChatMessage?>(null) }
+    var expandedMessageKey by remember { mutableStateOf<String?>(null) }
+
     val messages by chatViewModel.messages.collectAsState()
     val connectionStatus by chatViewModel.connectionStatus.collectAsState()
     val myId = ChatSession.userId
@@ -58,6 +70,34 @@ fun ChatScreen(
         if (messages.isNotEmpty()) {
             listState.animateScrollToItem(messages.lastIndex)
         }
+    }
+
+    if (pendingDeleteMessage != null) {
+        AlertDialog(
+            onDismissRequest = {
+                pendingDeleteMessage = null
+                expandedMessageKey = null
+            },
+            title = { Text("Delete message?") },
+            text = { Text("This will delete the message for both users.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    pendingDeleteMessage?.id?.let { chatViewModel.deleteMessage(it) }
+                    pendingDeleteMessage = null
+                    expandedMessageKey = null
+                }) {
+                    Text("Delete")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    pendingDeleteMessage = null
+                    expandedMessageKey = null
+                }) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 
     Column(
@@ -86,19 +126,58 @@ fun ChatScreen(
             state = listState,
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            items(messages) { message ->
+            items(messages, key = { it.id ?: it.localId }) { message ->
                 val isMine = message.senderId == myId
+                val hoverInteraction = remember(message.id, message.localId) { MutableInteractionSource() }
+                val isHovered by hoverInteraction.collectIsHoveredAsState()
+                val messageKey = message.id?.toString() ?: message.localId
+                val showDeleteIcon = isHovered || expandedMessageKey == messageKey
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = if (isMine) Arrangement.End else Arrangement.Start
                 ) {
                     Card(
-                        modifier = Modifier.widthIn(max = 280.dp),
+                        modifier = Modifier
+                            .widthIn(max = 280.dp)
+                            .hoverable(interactionSource = hoverInteraction)
+                            .combinedClickable(
+                                onClick = {
+                                    expandedMessageKey = if (expandedMessageKey == messageKey) null else messageKey
+                                },
+                                onLongClick = {
+                                    if (message.id != null) {
+                                        pendingDeleteMessage = message
+                                    }
+                                }
+                            ),
                         shape = RoundedCornerShape(14.dp),
                         colors = CardDefaults.cardColors(
                             containerColor = if (isMine) Color(0xFFFFE2C0) else Color.White
                         )
                     ) {
+                        if (showDeleteIcon) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(start = 4.dp, end = 4.dp, top = 2.dp),
+                                horizontalArrangement = Arrangement.End
+                            ) {
+                                IconButton(
+                                    onClick = {
+                                        if (message.id != null) {
+                                            pendingDeleteMessage = message
+                                        }
+                                    }
+                                ) {
+                                    Icon(
+                                        painter = painterResource(id = android.R.drawable.ic_menu_delete),
+                                        contentDescription = "Delete message",
+                                        tint = Color.Gray
+                                    )
+                                }
+                            }
+                        }
+
                         Text(
                             text = message.content,
                             modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
@@ -162,9 +241,3 @@ fun ChatScreen(
         }
     }
 }
-
-
-
-
-
-

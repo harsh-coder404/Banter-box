@@ -18,12 +18,11 @@ import java.util.concurrent.ConcurrentHashMap;
 public class RawChatWebSocketHandler extends TextWebSocketHandler {
 
     private final MessageService messageService;
-    private final ObjectMapper objectMapper;
+    private final ObjectMapper objectMapper = new ObjectMapper();
     private final ConcurrentHashMap<Long, Set<WebSocketSession>> sessions = new ConcurrentHashMap<>();
 
-    public RawChatWebSocketHandler(MessageService messageService, ObjectMapper objectMapper) {
+    public RawChatWebSocketHandler(MessageService messageService) {
         this.messageService = messageService;
-        this.objectMapper = objectMapper;
     }
 
     @Override
@@ -104,4 +103,3 @@ public class RawChatWebSocketHandler extends TextWebSocketHandler {
         return null;
     }
 }
-

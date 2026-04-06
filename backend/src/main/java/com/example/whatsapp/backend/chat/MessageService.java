@@ -2,6 +2,7 @@ package com.example.whatsapp.backend.chat;
 
 import com.example.whatsapp.backend.chat.dto.MessageDto;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.List;
@@ -39,6 +40,16 @@ public class MessageService {
                 .toList();
     }
 
+    @Transactional
+    public boolean deleteForParticipant(Long messageId, Long userId) {
+        return messageRepository.findParticipantMessage(messageId, userId)
+                .map(entity -> {
+                    messageRepository.delete(entity);
+                    return true;
+                })
+                .orElse(false);
+    }
+
     public String chatKey(Long a, Long b) {
         long min = Math.min(a, b);
         long max = Math.max(a, b);
@@ -55,4 +66,3 @@ public class MessageService {
         );
     }
 }
-

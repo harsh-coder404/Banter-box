@@ -21,6 +21,7 @@ import okhttp3.WebSocket
 import okhttp3.WebSocketListener
 import java.time.OffsetDateTime
 import java.time.format.DateTimeFormatter
+import java.util.UUID
 
 enum class DeliveryStatus {
     SENT,
@@ -29,6 +30,8 @@ enum class DeliveryStatus {
 }
 
 data class UiChatMessage(
+    val id: Long? = null,
+    val localId: String = UUID.randomUUID().toString(),
     val senderId: Long,
     val content: String,
     val timestamp: String,
@@ -45,8 +48,10 @@ class ChatViewModel : ViewModel() {
 
     private val gson = Gson()
     private val httpClient = OkHttpClient()
+    private val wsCandidates = BackendConfig.wsCandidates()
     private var webSocket: WebSocket? = null
     private var activePeerId: Long? = null
+    private var isConnectingSocket = false
 
     private val _messages = MutableStateFlow<List<UiChatMessage>>(emptyList())
     val messages = _messages.asStateFlow()
@@ -113,48 +118,74 @@ class ChatViewModel : ViewModel() {
     }
 
     private fun connectSocket(myUserId: Long) {
-        if (webSocket != null) {
+        if (webSocket != null || isConnectingSocket) {
             return
         }
 
+        isConnectingSocket = true
+        connectSocketCandidate(myUserId, 0)
+    }
+
+    private fun connectSocketCandidate(myUserId: Long, candidateIndex: Int) {
+        if (candidateIndex >= wsCandidates.size) {
+            isConnectingSocket = false
+            _connectionStatus.value = "Disconnected"
+            scheduleReconnect()
+            return
+        }
+
+        val candidateUrl = "${wsCandidates[candidateIndex]}?userId=$myUserId"
         _connectionStatus.value = "Connecting..."
 
         val request = Request.Builder()
-            .url("${BackendConfig.WS_URL}?userId=$myUserId")
+            .url(candidateUrl)
             .build()
 
-        webSocket = httpClient.newWebSocket(request, object : WebSocketListener() {
-            override fun onOpen(webSocket: WebSocket, response: Response) {
+        httpClient.newWebSocket(request, object : WebSocketListener() {
+            override fun onOpen(openedSocket: WebSocket, response: Response) {
+                webSocket = openedSocket
+                isConnectingSocket = false
                 _connectionStatus.value = "Connected"
             }
 
             override fun onMessage(webSocket: WebSocket, text: String) {
                 val incoming = runCatching { gson.fromJson(text, MessageDto::class.java) }.getOrNull() ?: return
                 val peerId = activePeerId ?: return
+                val myId = ChatSession.userId ?: dummyPhoneToId[ChatSession.phoneNumber]
 
                 val isRelevant =
-                    (incoming.senderId == ChatSession.userId && incoming.receiverId == peerId) ||
-                        (incoming.senderId == peerId && incoming.receiverId == ChatSession.userId)
+                    (incoming.senderId == myId && incoming.receiverId == peerId) ||
+                        (incoming.senderId == peerId && incoming.receiverId == myId)
 
-                if (isRelevant) {
-                    if (incoming.senderId == ChatSession.userId) {
-                        markLastOutgoingDelivered()
-                    } else {
-                        _messages.value = _messages.value + incoming.toUi()
-                    }
+                if (!isRelevant) {
+                    return
+                }
+
+                if (incoming.senderId == myId) {
+                    markLastOutgoingDelivered(incoming.id)
+                } else if (!containsMessage(incoming.id)) {
+                    _messages.value = _messages.value + incoming.toUi()
                 }
             }
 
-            override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
-                _connectionStatus.value = "Disconnected"
-                this@ChatViewModel.webSocket = null
-                scheduleReconnect()
+            override fun onFailure(failedSocket: WebSocket, t: Throwable, response: Response?) {
+                if (webSocket === failedSocket) {
+                    webSocket = null
+                    _connectionStatus.value = "Disconnected"
+                    scheduleReconnect()
+                    return
+                }
+
+                connectSocketCandidate(myUserId, candidateIndex + 1)
             }
 
-            override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
-                _connectionStatus.value = "Disconnected"
-                this@ChatViewModel.webSocket = null
-                scheduleReconnect()
+            override fun onClosed(closedSocket: WebSocket, code: Int, reason: String) {
+                if (webSocket === closedSocket) {
+                    webSocket = null
+                    isConnectingSocket = false
+                    _connectionStatus.value = "Disconnected"
+                    scheduleReconnect()
+                }
             }
         })
     }
@@ -166,7 +197,9 @@ class ChatViewModel : ViewModel() {
             return
         }
 
+        val localMessageId = UUID.randomUUID().toString()
         _messages.value = _messages.value + UiChatMessage(
+            localId = localMessageId,
             senderId = senderId,
             content = content,
             timestamp = nowTime(),
@@ -174,9 +207,9 @@ class ChatViewModel : ViewModel() {
         )
 
         val payload = gson.toJson(SendMessageRequestDto(senderId, receiverId, content))
-        val sent = webSocket?.send(payload) == true
-        if (sent) {
-            markLastOutgoingDelivered()
+        val sentOverSocket = webSocket?.send(payload) == true
+        if (sentOverSocket) {
+            return
         }
 
         val token = ChatSession.token
@@ -187,10 +220,24 @@ class ChatViewModel : ViewModel() {
                         SendMessageRequestDto(senderId, receiverId, content),
                         "Bearer $token"
                     )
-                }.onSuccess {
-                    markLastOutgoingDelivered()
-                    loadHistory(receiverId)
+                }.onSuccess { saved ->
+                    replacePendingWithSaved(localMessageId, saved)
                 }
+            }
+        }
+    }
+
+    fun deleteMessage(messageId: Long) {
+        val token = ChatSession.token ?: return
+        val peerId = activePeerId ?: return
+
+        _messages.value = _messages.value.filterNot { it.id == messageId }
+
+        viewModelScope.launch {
+            runCatching {
+                BackendClient.messageApi.delete(messageId, "Bearer $token")
+            }.onFailure {
+                loadHistory(peerId)
             }
         }
     }
@@ -204,6 +251,7 @@ class ChatViewModel : ViewModel() {
     }
 
     private fun MessageDto.toUi(): UiChatMessage = UiChatMessage(
+        id = id,
         senderId = senderId,
         content = content,
         timestamp = formatTime(createdAt),
@@ -219,23 +267,34 @@ class ChatViewModel : ViewModel() {
     private fun nowTime(): String =
         OffsetDateTime.now().format(DateTimeFormatter.ofPattern("HH:mm"))
 
-    private fun markLastOutgoingDelivered() {
+    private fun markLastOutgoingDelivered(serverMessageId: Long) {
         val me = ChatSession.userId ?: dummyPhoneToId[ChatSession.phoneNumber] ?: return
         val list = _messages.value.toMutableList()
         val idx = list.indexOfLast { it.senderId == me }
         if (idx >= 0) {
-            list[idx] = list[idx].copy(status = DeliveryStatus.DELIVERED)
+            list[idx] = list[idx].copy(id = serverMessageId, status = DeliveryStatus.DELIVERED)
             _messages.value = list
         }
     }
 
+    private fun replacePendingWithSaved(localId: String, saved: MessageDto) {
+        val list = _messages.value.toMutableList()
+        val idx = list.indexOfFirst { it.localId == localId }
+        if (idx >= 0) {
+            list[idx] = list[idx].copy(id = saved.id, status = DeliveryStatus.DELIVERED)
+            _messages.value = list
+        }
+    }
+
+    private fun containsMessage(id: Long): Boolean = _messages.value.any { it.id == id }
+
     private fun scheduleReconnect() {
         val userId = reconnectUserId ?: return
-        if (webSocket != null) return
+        if (webSocket != null || isConnectingSocket) return
 
         viewModelScope.launch {
             delay(1500)
-            if (webSocket == null) {
+            if (webSocket == null && !isConnectingSocket) {
                 connectSocket(userId)
             }
         }
@@ -251,10 +310,3 @@ class ChatViewModel : ViewModel() {
         }
     }
 }
-
-
-
-
-
-
-

@@ -1,69 +1,75 @@
 # Banterbox
 
-Android chat application with a Spring Boot backend and realtime messaging.
-
-## App Version
-
-- `versionCode`: `1`
-- `versionName`: `1.0`
+Android chat app with a Spring Boot backend, JWT auth, and realtime messaging.
 
 ## Modules
 
-- `app`: Android application (Jetpack Compose)
+- `app`: Android app (Jetpack Compose)
 - `backend`: Java Spring Boot backend (REST + WebSocket)
 
-## What's New (Current Build)
+## Current Features
 
-- Backend-driven session/navigation flow (`ChatSession`) from splash to chats.
-- Realtime chat screen with websocket status (`Connected` / `Disconnected`).
-- Chat bubbles with timestamp and tick indicators (`SENT` / `DELIVERED`).
-- Chats list shows latest message + latest message timestamp.
-- Bottom tab navigation uses single-top behavior to avoid duplicate stacks.
-- Logout added on chats top menu.
-- OTP success now opens chats directly (profile setup is bypassed in main flow).
-- Branding refreshed to `Banterbox` and green accent palette changed to light orange shades.
+- Dummy login flow with backend session (`ChatSession`) and direct navigation to chats after OTP/password validation.
+- Realtime chat over WebSocket with in-screen connection status (`Connected` / `Disconnected`).
+- Chat bubbles with timestamps and single/double tick indicators.
+- Chats list shows last message + last message time.
+- Account-specific chat persistence: logout/login restores chat history for that account from backend.
+- Message delete with confirmation dialog (delete-for-everyone behavior via backend).
+- Delete icon appears on message hover (desktop) and on tap/expand (touch), with long-press fallback.
+- Bottom tabs use single-top navigation (prevents duplicate destination stacking).
 
-## Dummy Login Accounts (for Testing)
+## Dummy Accounts (Development)
 
-Use these accounts to access app and test chat quickly:
+These users are auto-seeded by backend startup:
 
-| Name | Phone Number | OTP / Password |
-|------|--------------|----------------|
-| Golu | `9890989098` | `0000` |
-| Monu | `6262626262` | `0000` |
-| Sonu | `8787878787` | `0000` |
+| Name | Phone Number | OTP/Password |
+|------|--------------|--------------|
+| Golu | `9890989098` | `0000`       |
+| Monu | `6262626262` | `0000`       |
+| Sonu | `8787878787` | `0000`       |
 
-> These dummy accounts are seeded by backend startup logic and intended for development/testing.
+## How To Run
 
-## Run the Project
-
-### 1) Start backend
+### 1) Start backend first
 
 ```powershell
-Set-Location "D:\WhatsApp"
-.\gradlew.bat :backend:bootRun
+Set-Location "<project_folder>"
+.\gradlew.bat :backend:bootRun --console=plain
 ```
 
-Backend runs on `http://localhost:8081`.
+Backend base URL: `http://localhost:8081`
 
-### 2) Build or run Android app
+### 2) Build/run Android app
 
 ```powershell
-Set-Location "D:\WhatsApp"
+Set-Location "<projct_folder>"
 .\gradlew.bat :app:assembleDebug
 ```
 
-Then run the app from Android Studio on emulator/device.
+Run the generated debug app from Android Studio or install the APK.
 
-## Quick Chat Test Flow
+## How To Use (Quick Test)
 
-1. Login on Device A with `9890989098` + OTP `0000`.
-2. Login on Device B with `6262626262` (or `8787878787`) + OTP `0000`.
-3. Open chats, tap a contact, send text messages.
-4. Verify receiver side updates and chat preview timestamps.
+1. Login with one dummy account (for example `9890989098` / `0000`).
+2. Open chats and tap another dummy contact.
+3. Send a message and verify:
+   - bubble appears once,
+   - local timestamp is shown,
+   - receiver gets it in realtime,
+   - chats list preview updates.
+4. Delete test:
+   - tap/hover a bubble to show delete icon (or long-press),
+   - confirm delete,
+   - message is removed from both participants after sync/realtime update.
 
 ## Notes
 
-- If you get a stale network/security issue on emulator, reinstall app once after clean build.
-- Backend API details are documented in `backend/README.md`.
+- If delete is not working, ensure backend was restarted after latest changes.
+- Emulator networking defaults to `10.0.2.2`; fallback hosts are also configured in `network_security_config.xml`.
+- For physical devices, if local backend is unreachable, use ADB reverse:
 
+```powershell
+adb reverse tcp:8081 tcp:8081
+```
+
+- Backend API/module notes: `backend/README.md`

@@ -1,109 +1,116 @@
-# WhatsApp Backend (Spring Boot)
+# BanterBox Backend (Spring Boot)
 
-This module is a Java Spring Boot backend for the app, with REST APIs, JWT auth, and WebSocket chat events.
+Java Spring Boot backend for BanterBox with JWT auth, contacts, message history, and realtime chat.
 
 ## Features
 
-- User register/login with JWT
-- Contact management
-- Message send and history APIs
-- WebSocket STOMP for realtime chat updates
+- User auth with JWT (`/api/auth/register`, `/api/auth/login`)
+- Contact management (`/api/contacts`)
+- Message send, history, and delete APIs
+- Realtime chat support over WebSocket
 - H2 database for local development
+- Dummy account seeding for quick testing
+
+## Default Runtime
+
+- Base URL: `http://localhost:8081`
+- H2 console: `http://localhost:8081/h2-console`
 
 ## Run
 
-From repo root:
+From project root:
 
 ```powershell
-.\gradlew.bat :backend:bootRun
+Set-Location "<project_folder>"
+.\gradlew.bat :backend:bootRun --console=plain
 ```
 
-Backend starts on `http://localhost:8080`.
-
-## Test
+## Test / Verify
 
 ```powershell
-.\gradlew.bat :backend:test
+Set-Location "<project_folder>"
+.\gradlew.bat :backend:test --console=plain
 ```
+
+## Seeded Dummy Accounts
+
+These are created/updated at startup by `DummyDataInitializer`:
+
+| Name | Phone Number | OTP/Password |
+|------|--------------|--------------|
+| Golu | `9890989098` | `0000`       |
+| Monu | `6262626262` | `0000`       |
+| Sonu | `8787878787` | `0000`       |
 
 ## REST API
 
-### Register
-`POST /api/auth/register`
+### Auth
+
+- `POST /api/auth/register`
+- `POST /api/auth/login`
+
+Login request example:
 
 ```json
 {
-  "name": "MSD",
-  "phoneNumber": "9000000001",
-  "password": "secret123"
+  "phoneNumber": "6262626262",
+  "password": "0000"
 }
 ```
 
-### Login
-`POST /api/auth/login`
+### Contacts (JWT required)
+
+- `GET /api/contacts`
+- `POST /api/contacts`
+
+Add contact request example:
 
 ```json
 {
-  "phoneNumber": "9000000001",
-  "password": "secret123"
+  "contactPhoneNumber": "9890989098"
 }
 ```
 
-Returns JWT token.
+### Messages (JWT required)
 
-### Add contact
-`POST /api/contacts`
-Header: `Authorization: Bearer <token>`
+- `POST /api/messages`
+- `GET /api/messages/{otherUserId}`
+- `DELETE /api/messages/{messageId}`
 
-```json
-{
-  "contactPhoneNumber": "9000000002"
-}
-```
-
-### Get contacts
-`GET /api/contacts`
-Header: `Authorization: Bearer <token>`
-
-### Send message (REST)
-`POST /api/messages`
-Header: `Authorization: Bearer <token>`
+Send message request example:
 
 ```json
 {
-  "senderId": 1,
-  "receiverId": 2,
+  "senderId": 2,
+  "receiverId": 1,
   "content": "hello"
 }
 ```
 
-### Message history
-`GET /api/messages/{otherUserId}`
-Header: `Authorization: Bearer <token>`
-
 ## WebSocket
 
-- Endpoint: `/ws`
-- App destination: `/app/chat.send`
-- Topic: `/topic/chat.{minUserId}_{maxUserId}`
+The Android app currently uses raw WebSocket endpoint:
 
-Send frame payload:
+- Endpoint: `/ws/chat`
+- Query param: `userId`
+- Example URL: `ws://localhost:8081/ws/chat?userId=2`
+
+Message payload format:
 
 ```json
 {
-  "senderId": 1,
-  "receiverId": 2,
+  "senderId": 2,
+  "receiverId": 1,
   "content": "realtime message"
 }
 ```
 
-Subscribe to:
+## Notes
 
-`/topic/chat.1_2`
+- If API behavior seems stale after code changes, restart backend process.
+- For Android emulator: app typically reaches host via `10.0.2.2`.
+- For physical devices, use ADB reverse when testing local backend:
 
-## Notes for Android migration
-
-- Replace Firebase auth calls with `/api/auth/register` and `/api/auth/login`
-- Replace chat list/search/add operations with `/api/contacts` and `/api/messages`
-- Use STOMP over WebSocket for realtime receive
-
+```powershell
+adb reverse tcp:8081 tcp:8081
+```

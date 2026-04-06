@@ -8,6 +8,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.ViewModel
 import com.example.whatsapp.data.remote.AddContactRequestDto
 import com.example.whatsapp.data.remote.BackendClient
+import com.example.whatsapp.data.remote.ContactDto
 import com.example.whatsapp.data.session.ChatSession
 import com.example.whatsapp.presentation.chat_box.ChatListModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -21,7 +22,6 @@ import java.time.format.DateTimeFormatter
 
 class BaseViewModel : ViewModel() {
 
-    // Fallback contacts so chat section is not blank when Firebase has no rows yet.
     private val dummyChats = listOf(
         ChatListModel(name = "Golu", phoneNumber = "9890989098", time = "09:20", message = "Tap to chat"),
         ChatListModel(name = "Monu", phoneNumber = "6262626262", time = "10:45", message = "Tap to chat"),
@@ -79,20 +79,39 @@ class BaseViewModel : ViewModel() {
         }
 
         viewModelScope.launch {
+            val authHeader = "Bearer $token"
+
             runCatching {
-                BackendClient.contactApi.contacts("Bearer $token")
+                BackendClient.contactApi.contacts(authHeader)
             }.onSuccess { contacts ->
-                val mapped = contacts.map { contact ->
+                val mePhone = ChatSession.phoneNumber
+
+                val byPhone = linkedMapOf<String, ContactDto>()
+                contacts.forEach { byPhone[it.phoneNumber] = it }
+
+                // Ensure always-visible dummy users are hydrated from backend if present.
+                dummyChatsForCurrentUser().forEach { dummy ->
+                    val phone = dummy.phoneNumber ?: return@forEach
+                    if (phone == mePhone || byPhone.containsKey(phone)) return@forEach
+                    runCatching {
+                        BackendClient.userApi.userByPhone(phone, authHeader)
+                    }.onSuccess { user ->
+                        byPhone[user.phoneNumber] = user
+                    }
+                }
+
+                val rows = byPhone.values.map { contact ->
                     val history = runCatching {
-                        BackendClient.messageApi.history(contact.id, "Bearer $token")
+                        BackendClient.messageApi.history(contact.id, authHeader)
                     }.getOrDefault(emptyList())
 
                     val last = history.lastOrNull()
                     val lastMessage = last?.content ?: "Tap to chat"
                     val lastTime = last?.createdAt?.let(::formatTime) ?: "--:--"
 
+                    val dummyName = dummyChats.firstOrNull { it.phoneNumber == contact.phoneNumber }?.name
                     ChatListModel(
-                        name = contact.name,
+                        name = if (contact.name.isBlank()) dummyName else contact.name,
                         phoneNumber = contact.phoneNumber,
                         time = lastTime,
                         message = lastMessage
@@ -100,7 +119,7 @@ class BaseViewModel : ViewModel() {
                 }
 
                 val fallback = dummyChatsForCurrentUser()
-                val merged = (mapped + fallback).distinctBy { it.phoneNumber }
+                val merged = (rows + fallback).distinctBy { it.phoneNumber }
                 _chatList.value = if (merged.isEmpty()) fallback else merged
             }.onFailure {
                 _chatList.value = dummyChatsForCurrentUser()
